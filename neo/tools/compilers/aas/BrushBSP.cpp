@@ -79,7 +79,7 @@ idBrushBSPPortal::AddToNodes
 */
 void idBrushBSPPortal::AddToNodes( idBrushBSPNode *front, idBrushBSPNode *back ) {
 	if ( nodes[0] || nodes[1] ) {
-		common->Error( "AddToNode: allready included" );
+		common->Error( "AddToNode: already included" );
 	}
 
 	assert( front && back );
@@ -880,7 +880,7 @@ idBrushBSPNode *idBrushBSP::ProcessGridCell( idBrushBSPNode *node, int skipConte
 
 	BuildBrushBSP_r( node, planeList, testedPlanes, skipContents );
 
-	delete testedPlanes;
+	delete[] testedPlanes;
 
 #ifdef OUPUT_BSP_STATS_PER_GRID_CELL
 	common->Printf( "\r%6d splits\n", numGridCellSplits );

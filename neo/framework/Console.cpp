@@ -40,6 +40,8 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "framework/Console.h"
 
+#include "tools/edit_public.h"
+
 void SCR_DrawTextLeftAlign( float &y, const char *text, ... ) id_attribute((format(printf,2,3)));
 void SCR_DrawTextRightAlign( float &y, const char *text, ... ) id_attribute((format(printf,2,3)));
 
@@ -280,7 +282,7 @@ float SCR_DrawAsyncStats( float y ) {
 
 		idStr msg;
 		idAsyncNetwork::server.GetAsyncStatsAvgMsg( msg );
-		SCR_DrawTextRightAlign( y, msg.c_str() );
+		SCR_DrawTextRightAlign( y, "%s", msg.c_str() );
 
 	} else if ( idAsyncNetwork::client.IsActive() ) {
 
@@ -795,8 +797,9 @@ bool	idConsoleLocal::ProcessEvent( const sysEvent_t *event, bool forceAccept ) {
 	bool consoleKey = false;
 	if(event->evType == SE_KEY)
 	{
-		if( event->evValue == Sys_GetConsoleKey( false ) || event->evValue == Sys_GetConsoleKey( true )
-		    || (event->evValue == K_ESCAPE && idKeyInput::IsDown( K_SHIFT )) ) // shift+esc should also open console
+		bool shiftPressed = idKeyInput::IsDown( K_SHIFT );
+		if( event->evValue == K_CONSOLE || event->evValue == Sys_GetConsoleKey( shiftPressed )
+		   || (event->evValue == K_ESCAPE && shiftPressed) ) // shift+esc should also open console
 		{
 			consoleKey = true;
 		}
@@ -823,7 +826,6 @@ bool	idConsoleLocal::ProcessEvent( const sysEvent_t *event, bool forceAccept ) {
 		// a down event will toggle the destination lines
 		if ( keyCatching ) {
 			Close();
-			Sys_GrabMouseCursor( true );
 			cvarSystem->SetCVarBool( "ui_chat", false );
 		} else {
 			consoleField.Clear();
@@ -848,7 +850,7 @@ bool	idConsoleLocal::ProcessEvent( const sysEvent_t *event, bool forceAccept ) {
 	// handle key and character events
 	if ( event->evType == SE_CHAR ) {
 		// never send the console key as a character
-		if ( event->evValue != Sys_GetConsoleKey( false ) && event->evValue != Sys_GetConsoleKey( true ) ) {
+		if ( event->evValue != Sys_GetConsoleKey( idKeyInput::IsDown( K_SHIFT ) ) ) {
 			consoleField.CharEvent( event->evValue );
 		}
 		return true;

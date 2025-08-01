@@ -163,7 +163,11 @@ public:
 	idStr				GetAutoSaveName( const char *mapName ) const;
 
 	bool				LoadGame(const char *saveName);
-	bool				SaveGame(const char *saveName, bool autosave = false);
+	// DG: added saveFileName so we can set a sensible filename for autosaves (see comment in MoveToNewMap())
+	bool				SaveGame(const char *saveName, bool autosave = false, const char* saveFileName = NULL);
+
+	bool				QuickSave();
+	bool				QuickLoad();
 
 	const char			*GetAuthMsg( void );
 
@@ -181,6 +185,8 @@ public:
 	static idCVar		com_aviDemoTics;
 	static idCVar		com_wipeSeconds;
 	static idCVar		com_guid;
+	static idCVar		com_numQuicksaves;
+	static idCVar		com_disableAutoSaves;
 
 	static idCVar		gui_configServerRate;
 
@@ -343,6 +349,12 @@ public:
 	void				SetMainMenuSkin( void );
 	void				SetPbMenuGuiVars( void );
 
+	// DG: true if running the Demo version of Doom3 (for FT_IsDemo, see Common.h)
+	bool				IsDemoVersion()
+	{
+		return demoversion;
+	}
+
 private:
 	bool				BoxDialogSanityCheck( void );
 	void				EmitGameAuth( void );
@@ -366,6 +378,8 @@ private:
 	bool				authWaitBox;
 
 	idStr				authMsg;
+
+	bool				demoversion; // DG: true if running the Demo version of Doom3, for FT_IsDemo (see Common.h)
 };
 
 extern idSessionLocal	sessLocal;

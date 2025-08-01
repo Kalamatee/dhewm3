@@ -1779,6 +1779,13 @@ void idPlayer::Spawn( void ) {
 			cursor = uiManager->FindGui( temp, true, gameLocal.isMultiplayer, gameLocal.isMultiplayer );
 		}
 		if ( cursor ) {
+			// DG: make it scale to 4:3 so crosshair looks properly round
+			//     yes, like so many scaling-related things this is a bit hacky
+			//     and note that this is special cased in StateChanged and you
+			//     can *not* generally set windowDef properties like this.
+			cursor->SetStateBool("scaleto43", true);
+			cursor->StateChanged(gameLocal.time); // DG end
+
 			cursor->Activate( true, gameLocal.time );
 		}
 
@@ -2466,6 +2473,12 @@ void idPlayer::Restore( idRestoreGame *savefile ) {
 	savefile->ReadInt( focusTime );
 	savefile->ReadObject( reinterpret_cast<idClass *&>( focusVehicle ) );
 	savefile->ReadUserInterface( cursor );
+	// DG: make it scale to 4:3 so crosshair looks properly round
+	//     yes, like so many scaling-related things this is a bit hacky
+	//     and note that this is special cased in StateChanged and you
+	//     can *not* generally set windowDef properties like this.
+	cursor->SetStateBool("scaleto43", true);
+	cursor->StateChanged(gameLocal.time); // DG end
 
 	savefile->ReadInt( oldMouseX );
 	savefile->ReadInt( oldMouseY );
@@ -2536,6 +2549,13 @@ void idPlayer::Restore( idRestoreGame *savefile ) {
 	savefile->ReadFloat( bloomSpeed );
 	savefile->ReadFloat( bloomIntensity );
 #endif
+
+	// DG: workaround for lingering messages that are shown forever after loading a savegame
+	//     (one way to get them is saving again, while the message from first save is still
+	//      shown, and then load)
+	if ( hud ) {
+		hud->SetStateString( "message", "" );
+	}
 }
 
 /*
@@ -3208,12 +3228,21 @@ void idPlayer::DrawHUD( idUserInterface *_hud ) {
 		if ( cursor && weapon.GetEntity()->ShowCrosshair() ) {
 
 #ifdef _D3XP
+			bool wantScaleTo43 = true; // DG: for fixing scaling of grabber cursor
 			if ( weapon.GetEntity()->GetGrabberState() == 1 || weapon.GetEntity()->GetGrabberState() == 2 ) {
 				cursor->SetStateString( "grabbercursor", "1" );
 				cursor->SetStateString( "combatcursor", "0" );
+				// DG: while the grabbercursor is active, the cursor must not be scaled because
+				//     (unlike with the regular crosshair) that distorts it when not using 4:3
+				wantScaleTo43 = false;
 			} else {
 				cursor->SetStateString( "grabbercursor", "0" );
 				cursor->SetStateString( "combatcursor", "1" );
+			}
+			// DG: update scaleto43 state if necessary
+			if ( cursor->GetStateBool( "scaleto43" ) != wantScaleTo43 ) {
+				cursor->SetStateBool( "scaleto43", wantScaleTo43 );
+				cursor->StateChanged( gameLocal.realClientTime );
 			}
 #endif
 
@@ -5519,6 +5548,11 @@ void idPlayer::UpdateFocus( void ) {
 
 	if ( focusGUIent && focusUI ) {
 		if ( !oldFocus || oldFocus != focusGUIent ) {
+			// DG: tell the old UI it isn't focused anymore
+			if ( oldFocus != NULL && oldUI != NULL ) {
+				command = oldUI->Activate( false, gameLocal.time );
+				// TODO: HandleGuiCommands( oldFocus, command ); ?
+			} // DG end
 			command = focusUI->Activate( true, gameLocal.time );
 			HandleGuiCommands( focusGUIent, command );
 			StartSound( "snd_guienter", SND_CHANNEL_ANY, 0, false, NULL );

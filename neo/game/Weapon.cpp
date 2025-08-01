@@ -29,6 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "sys/platform.h"
 #include "framework/DeclEntityDef.h"
 #include "framework/DeclSkin.h"
+#include "framework/Session.h"
 
 #include "gamesys/SysCvar.h"
 #include "ai/AI.h"
@@ -38,6 +39,8 @@ If you have questions concerning this license or the applicable additional terms
 #include "WorldSpawn.h"
 
 #include "Weapon.h"
+
+extern bool IsDoom3DemoVersion(); // DG: hack to support the Demo version of Doom3
 
 /***********************************************************************
 
@@ -398,7 +401,8 @@ void idWeapon::Restore( idRestoreGame *savefile ) {
 	WEAPON_RELOAD.LinkTo(		scriptObject, "WEAPON_RELOAD" );
 	WEAPON_NETRELOAD.LinkTo(	scriptObject, "WEAPON_NETRELOAD" );
 	WEAPON_NETENDRELOAD.LinkTo(	scriptObject, "WEAPON_NETENDRELOAD" );
-	WEAPON_NETFIRING.LinkTo(	scriptObject, "WEAPON_NETFIRING" );
+	if (!IsDoom3DemoVersion()) // the demo assets don't support WEAPON_NETFIRING
+		WEAPON_NETFIRING.LinkTo(	scriptObject, "WEAPON_NETFIRING" );
 	WEAPON_RAISEWEAPON.LinkTo(	scriptObject, "WEAPON_RAISEWEAPON" );
 	WEAPON_LOWERWEAPON.LinkTo(	scriptObject, "WEAPON_LOWERWEAPON" );
 
@@ -453,12 +457,21 @@ void idWeapon::Restore( idRestoreGame *savefile ) {
 
 	savefile->ReadInt( guiLightHandle );
 	savefile->ReadRenderLight( guiLight );
-
+	// DG: we need to get a fresh handle, otherwise this will be tied to a completely unrelated light!
+	if ( guiLightHandle != -1 ) {
+		guiLightHandle = gameRenderWorld->AddLightDef( &guiLight );
+	}
 	savefile->ReadInt( muzzleFlashHandle );
 	savefile->ReadRenderLight( muzzleFlash );
+	if ( muzzleFlashHandle != -1 ) { // DG: enforce getting fresh handle
+		muzzleFlashHandle = gameRenderWorld->AddLightDef( &muzzleFlash );
+	}
 
 	savefile->ReadInt( worldMuzzleFlashHandle );
 	savefile->ReadRenderLight( worldMuzzleFlash );
+	if ( worldMuzzleFlashHandle != -1 ) { // DG: enforce getting fresh handle
+		worldMuzzleFlashHandle = gameRenderWorld->AddLightDef( &worldMuzzleFlash );
+	}
 
 	savefile->ReadVec3( flashColor );
 	savefile->ReadInt( muzzleFlashEnd );
@@ -516,6 +529,9 @@ void idWeapon::Restore( idRestoreGame *savefile ) {
 
 	savefile->ReadInt( nozzleGlowHandle );
 	savefile->ReadRenderLight( nozzleGlow );
+	if ( nozzleGlowHandle != -1 ) { // DG: enforce getting fresh handle
+		nozzleGlowHandle = gameRenderWorld->AddLightDef( &nozzleGlow );
+	}
 
 	savefile->ReadVec3( nozzleGlowColor );
 	savefile->ReadMaterial( nozzleGlowShader );
@@ -552,7 +568,8 @@ void idWeapon::Clear( void ) {
 	WEAPON_RELOAD.Unlink();
 	WEAPON_NETRELOAD.Unlink();
 	WEAPON_NETENDRELOAD.Unlink();
-	WEAPON_NETFIRING.Unlink();
+	if (WEAPON_NETFIRING.IsLinked())
+		WEAPON_NETFIRING.Unlink();
 	WEAPON_RAISEWEAPON.Unlink();
 	WEAPON_LOWERWEAPON.Unlink();
 
@@ -995,7 +1012,8 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 	WEAPON_RELOAD.LinkTo(		scriptObject, "WEAPON_RELOAD" );
 	WEAPON_NETRELOAD.LinkTo(	scriptObject, "WEAPON_NETRELOAD" );
 	WEAPON_NETENDRELOAD.LinkTo(	scriptObject, "WEAPON_NETENDRELOAD" );
-	WEAPON_NETFIRING.LinkTo(	scriptObject, "WEAPON_NETFIRING" );
+	if (!IsDoom3DemoVersion()) // the demo assets don't support WEAPON_NETFIRING
+		WEAPON_NETFIRING.LinkTo(	scriptObject, "WEAPON_NETFIRING" );
 	WEAPON_RAISEWEAPON.LinkTo(	scriptObject, "WEAPON_RAISEWEAPON" );
 	WEAPON_LOWERWEAPON.LinkTo(	scriptObject, "WEAPON_LOWERWEAPON" );
 
@@ -2019,7 +2037,8 @@ void idWeapon::EnterCinematic( void ) {
 		WEAPON_RELOAD		= false;
 		WEAPON_NETRELOAD	= false;
 		WEAPON_NETENDRELOAD	= false;
-		WEAPON_NETFIRING	= false;
+		if(WEAPON_NETFIRING.IsLinked())
+			WEAPON_NETFIRING	= false;
 		WEAPON_RAISEWEAPON	= false;
 		WEAPON_LOWERWEAPON	= false;
 	}

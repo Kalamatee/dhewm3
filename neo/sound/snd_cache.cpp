@@ -364,7 +364,8 @@ void idSoundSample::MakeDefault( void ) {
 	alGetError();
 	alBufferData( openalBuffer, objectInfo.nChannels==1?AL_FORMAT_MONO16:AL_FORMAT_STEREO16, nonCacheData, objectMemSize, objectInfo.nSamplesPerSec );
 	if ( alGetError() != AL_NO_ERROR ) {
-		common->Error( "idSoundCache: error loading data into OpenAL hardware buffer" );
+		common->Warning( "idSoundCache: error loading data into OpenAL hardware buffer" );
+		hardwareBuffer = false;
 	} else {
 		hardwareBuffer = true;
 	}
@@ -494,12 +495,15 @@ void idSoundSample::Load( void ) {
 			alGetError();
 			alBufferData( openalBuffer, objectInfo.nChannels==1?AL_FORMAT_MONO16:AL_FORMAT_STEREO16, nonCacheData, objectMemSize, objectInfo.nSamplesPerSec );
 			if ( alGetError() != AL_NO_ERROR ) {
-				common->Error( "idSoundCache: error loading data into OpenAL hardware buffer" );
+				common->Warning( "idSoundCache: error loading data into OpenAL hardware buffer" );
+				hardwareBuffer = false;
 			} else {
 				hardwareBuffer = true;
 			}
 		}
+	}
 
+	{
 		// OGG decompressed at load time (when smaller than s_decompressionLimit seconds, 6 seconds by default)
 		if ( objectInfo.wFormatTag == WAVE_FORMAT_TAG_OGG ) {
 			if ( ( objectSize < ( ( int ) objectInfo.nSamplesPerSec * idSoundSystemLocal::s_decompressionLimit.GetInteger() ) ) ) {
@@ -546,9 +550,10 @@ void idSoundSample::Load( void ) {
 
 					alGetError();
 					alBufferData( openalBuffer, objectInfo.nChannels==1?AL_FORMAT_MONO16:AL_FORMAT_STEREO16, destData, objectSize * sizeof( short ), objectInfo.nSamplesPerSec );
-					if ( alGetError() != AL_NO_ERROR )
-						common->Error( "idSoundCache: error loading data into OpenAL hardware buffer" );
-					else {
+					if ( alGetError() != AL_NO_ERROR ) {
+						common->Warning( "idSoundCache: error loading data into OpenAL hardware buffer" );
+						hardwareBuffer = false;
+					} else {
 						hardwareBuffer = true;
 					}
 
@@ -573,11 +578,11 @@ void idSoundSample::PurgeSoundSample() {
 	alGetError();
 	alDeleteBuffers( 1, &openalBuffer );
 	if ( alGetError() != AL_NO_ERROR ) {
-		common->Error( "idSoundCache: error unloading data from OpenAL hardware buffer" );
-	} else {
-		openalBuffer = 0;
-		hardwareBuffer = false;
+		common->Warning( "idSoundCache: error unloading data from OpenAL hardware buffer" );
 	}
+
+	openalBuffer = 0;
+	hardwareBuffer = false;
 
 	if ( amplitudeData ) {
 		soundCacheAllocator.Free( amplitudeData );

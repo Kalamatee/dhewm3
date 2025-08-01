@@ -10,6 +10,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include <sys/stat.h>
+
 #ifdef _WIN32_WCE
 # define DIR_SEPERATOR TEXT("\\")
 # undef _getcwd
@@ -35,7 +37,7 @@
 #endif /* main */
 
 /* The standard output files */
-#define STDOUT_FILE	TEXT("stdout.txt")
+#define STDOUT_FILE	TEXT("dhewm3log.txt") /* DG: renamed this */
 #define STDERR_FILE	TEXT("stderr.txt")
 
 /* Set a variable to tell if the stdio redirect has been enabled. */
@@ -158,111 +160,6 @@ static void cleanup(void)
 	SDL_Quit();
 }
 
-/* Remove the output files if there was no output written */
-static void cleanup_output(void) {
-	FILE *file;
-	int empty;
-
-	/* Flush the output in case anything is queued */
-	fclose(stdout);
-	fclose(stderr);
-
-	/* Without redirection we're done */
-	if (!stdioRedirectEnabled) {
-		return;
-	}
-
-	/* See if the files have any output in them */
-	if ( stdoutPath[0] ) {
-		file = fopen(stdoutPath, TEXT("rb"));
-		if ( file ) {
-			empty = (fgetc(file) == EOF) ? 1 : 0;
-			fclose(file);
-			if ( empty ) {
-				remove(stdoutPath);
-			}
-		}
-	}
-	if ( stderrPath[0] ) {
-		file = fopen(stderrPath, TEXT("rb"));
-		if ( file ) {
-			empty = (fgetc(file) == EOF) ? 1 : 0;
-			fclose(file);
-			if ( empty ) {
-				remove(stderrPath);
-			}
-		}
-	}
-}
-
-/* Redirect the output (stdout and stderr) to a file */
-static void redirect_output(void)
-{
-	DWORD pathlen;
-#ifdef _WIN32_WCE
-	wchar_t path[MAX_PATH];
-#else
-	char path[MAX_PATH];
-#endif
-	FILE *newfp;
-
-	pathlen = GetModuleFileName(NULL, path, SDL_arraysize(path));
-	while ( pathlen > 0 && path[pathlen] != '\\' ) {
-		--pathlen;
-	}
-	path[pathlen] = '\0';
-
-#ifdef _WIN32_WCE
-	wcsncpy( stdoutPath, path, SDL_arraysize(stdoutPath) );
-	wcsncat( stdoutPath, DIR_SEPERATOR STDOUT_FILE, SDL_arraysize(stdoutPath) );
-#else
-	SDL_strlcpy( stdoutPath, path, SDL_arraysize(stdoutPath) );
-	SDL_strlcat( stdoutPath, DIR_SEPERATOR STDOUT_FILE, SDL_arraysize(stdoutPath) );
-#endif
-
-	/* Redirect standard input and standard output */
-	newfp = freopen(stdoutPath, TEXT("w"), stdout);
-
-#ifndef _WIN32_WCE
-	if ( newfp == NULL ) {	/* This happens on NT */
-#if !defined(stdout)
-		stdout = fopen(stdoutPath, TEXT("w"));
-#else
-		newfp = fopen(stdoutPath, TEXT("w"));
-		if ( newfp ) {
-			*stdout = *newfp;
-		}
-#endif
-	}
-#endif /* _WIN32_WCE */
-
-#ifdef _WIN32_WCE
-	wcsncpy( stderrPath, path, SDL_arraysize(stdoutPath) );
-	wcsncat( stderrPath, DIR_SEPERATOR STDOUT_FILE, SDL_arraysize(stdoutPath) );
-#else
-	SDL_strlcpy( stderrPath, path, SDL_arraysize(stderrPath) );
-	SDL_strlcat( stderrPath, DIR_SEPERATOR STDERR_FILE, SDL_arraysize(stderrPath) );
-#endif
-
-	newfp = freopen(stderrPath, TEXT("w"), stderr);
-#ifndef _WIN32_WCE
-	if ( newfp == NULL ) {	/* This happens on NT */
-#if !defined(stderr)
-		stderr = fopen(stderrPath, TEXT("w"));
-#else
-		newfp = fopen(stderrPath, TEXT("w"));
-		if ( newfp ) {
-			*stderr = *newfp;
-		}
-#endif
-	}
-#endif /* _WIN32_WCE */
-
-	setvbuf(stdout, NULL, _IOLBF, BUFSIZ);	/* Line buffered */
-	setbuf(stderr, NULL);			/* No buffering */
-	stdioRedirectEnabled = 1;
-}
-
 #if defined(_MSC_VER) && !defined(_WIN32_WCE)
 /* The VC++ compiler needs main defined */
 #define console_main main
@@ -352,6 +249,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR szCmdLine, int sw)
 		FreeLibrary(handle);
 	}
 
+#if 0 // DG: output redirection is now done in dhewm3's main() aka SDL_main()
 	/* Check for stdio redirect settings and do the redirection */
 	if ((env_str = SDL_getenv("SDL_STDIO_REDIRECT"))) {
 		if (SDL_atoi(env_str)) {
@@ -363,6 +261,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR szCmdLine, int sw)
 		redirect_output();
 	}
 #endif
+#endif // 0
 
 #ifdef _WIN32_WCE
 	nLen = wcslen(szCmdLine)+128+1;

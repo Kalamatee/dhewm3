@@ -57,7 +57,7 @@ void DisplayRealTimeString( const char *string, ... ) {
 		va_start( argPtr, string );
 		vsprintf( buf, string, argPtr );
 		va_end( argPtr );
-		common->Printf( buf );
+		common->Printf( "%s", buf );
 		lastUpdateTime = time;
 	}
 }
@@ -900,7 +900,7 @@ void idBrush::AddBevelsForAxialBox( void ) {
 					// behind this plane, it is a proper edge bevel
 					for ( k = 0; k < sides.Num(); k++ ) {
 
-						// if this plane has allready been used, skip it
+						// if this plane has already been used, skip it
 						if ( plane.Compare( sides[k]->plane, 0.001f, 0.1f ) ) {
 							break;
 						}

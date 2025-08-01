@@ -26,8 +26,8 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
-#include "../../idlib/precompiled.h"
-#pragma hdrstop
+#include "tools/edit_gui_common.h"
+
 
 #include "qe3.h"
 
@@ -47,7 +47,7 @@ bool WINAPI GetToken (bool crossline)
 {
 	char    *token_p;
 
-	if (unget)                         // is a token allready waiting?
+	if (unget)                         // is a token already waiting?
 	{
 		unget = false;
 		return true;

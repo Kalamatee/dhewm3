@@ -26,8 +26,8 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
-#include "../../idlib/precompiled.h"
-#pragma hdrstop
+#include "tools/edit_gui_common.h"
+
 
 #include "qe3.h"
 #include <GL/glu.h>
@@ -44,7 +44,7 @@ bool	g_bShowLightVolumes = false;
 bool	g_bShowLightTextures = false;
 
 void GLCircle(float x, float y, float z, float r);
-
+void GLSphere(float r, int lats, int longs);
 const int POINTS_PER_KNOT = 50;
 
 /*
@@ -1518,10 +1518,6 @@ brush_t *Brush_Parse(idVec3 origin) {
 		// read the texturedef
 		GetToken(false);
 		f->texdef.SetName(token);
-		if (token[0] == '(') {
-			int i = 32;
-		}
-
 		GetToken(false);
 		f->texdef.shift[0] = atoi(token);
 		GetToken(false);
@@ -2063,6 +2059,7 @@ brush_t *Brush_CreatePyramid(idVec3 mins, idVec3 maxs, texdef_t *texdef) {
 	// ++timo handle new brush primitive ? return here ??
 	return Brush_Create(mins, maxs, texdef);
 
+#if 0
 	int i;
 	for (i = 0; i < 3; i++) {
 		if (maxs[i] < mins[i]) {
@@ -2125,6 +2122,7 @@ brush_t *Brush_CreatePyramid(idVec3 mins, idVec3 maxs, texdef_t *texdef) {
 	}
 
 	return b;
+#endif
 }
 
 /*
@@ -2135,7 +2133,7 @@ Brush_MakeSided
 ================
 */
 void Brush_MakeSided(int sides) {
-	int			i, axis;
+	int			i, axis = 0;
 	idVec3		mins, maxs;
 	brush_t		*b;
 	texdef_t	*texdef;
@@ -2537,7 +2535,7 @@ bool Brush_ModelIntersect(brush_t *b, idVec3 origin, idVec3 dir,float &scale) {
 
 		bool matrix = false;
 		idMat3 mat;
-		float a, s, c;
+		float a = 0.0f, s = 0.0f, c = 0.0f;
 		if (GetMatrixForKey(b->owner, "rotation", mat)) {
 			matrix = true;
 		} else {
@@ -2673,7 +2671,7 @@ Brush_AddToList
 */
 void Brush_AddToList(brush_t *b, brush_t *list) {
 	if (b->next || b->prev) {
-		Error("Brush_AddToList: allready linked");
+		Error("Brush_AddToList: already linked");
 	}
 
 	if (list == &selected_brushes || list == &active_brushes) {
@@ -2905,7 +2903,7 @@ void Brush_SelectFaceForDragging(brush_t *b, face_t *f, bool shear) {
 	//AddMovePlane(&f->plane);
 
 	if (c == 0) {
-		return;				// allready completely added
+		return;				// already completely added
 	}
 
 	// select all points on this plane in all brushes the selection
@@ -3144,7 +3142,6 @@ void Brush_UpdateLightPoints(brush_t *b, const idVec3 &offset) {
 		if (GetVectorForKey(b->owner, "light_center", vCenter)) {
 
 			if (offset.x || offset.y || offset.z) {
-				CString str;
 				VectorAdd(vCenter, offset, vCenter);
 				SetKeyVec3(b->owner, "light_center", vCenter);
 			}
@@ -3618,9 +3615,9 @@ void DrawProjectedLight(brush_t *b, bool bSelected, bool texture) {
 	qglColor3f(1, 0, 1);
 	for (i = 0; i < tri->numIndexes; i += 3) {
 		qglBegin(GL_LINE_LOOP);
-		glVertex3fv(tri->verts[tri->indexes[i]].xyz.ToFloatPtr());
-		glVertex3fv(tri->verts[tri->indexes[i + 1]].xyz.ToFloatPtr());
-		glVertex3fv(tri->verts[tri->indexes[i + 2]].xyz.ToFloatPtr());
+		qglVertex3fv(tri->verts[tri->indexes[i]].xyz.ToFloatPtr());
+		qglVertex3fv(tri->verts[tri->indexes[i + 1]].xyz.ToFloatPtr());
+		qglVertex3fv(tri->verts[tri->indexes[i + 2]].xyz.ToFloatPtr());
 		qglEnd();
 	}
 
@@ -3734,6 +3731,35 @@ void GLCircle(float x, float y, float z, float r)
 
 /*
 ================
+GLSphere - DG: from SteelStorm2
+================
+*/
+void GLSphere(float r, int lats, int longs) {
+	int i, j;
+	for(i = 0; i <= lats; i++) {
+		float lat0 = idMath::PI  * (-0.5 + (float) (i - 1) / lats);
+		float z0  = idMath::Sin(lat0);
+		float zr0 =  idMath::Cos(lat0);
+		float lat1 = idMath::PI * (-0.5 + (float) i / lats);
+		float z1 = sin(lat1);
+		float zr1 = cos(lat1);
+    
+		qglBegin(GL_QUAD_STRIP);
+		for(j = 0; j <= longs; j++) {
+			float lng = 2 * idMath::PI * (float) (j - 1) / longs;
+			float x = idMath::Cos(lng);
+			float y = idMath::Sin(lng);
+    
+			qglNormal3f(x * zr0, y * zr0, z0);
+			qglVertex3f(x * zr0, y * zr0, z0);
+			qglNormal3f(x * zr1, y * zr1, z1);
+			qglVertex3f(x * zr1, y * zr1, z1);
+			}
+			qglEnd();
+       }
+ }
+/*
+================
 DrawSpeaker
 ================
 */
@@ -3788,10 +3814,9 @@ void DrawSpeaker(brush_t *b, bool bSelected, bool twoD) {
 		qglTranslatef(b->owner->origin.x, b->owner->origin.y, b->owner->origin.z );
 		qglColor3f( 0.4f, 0.4f, 0.4f );
 		qglPolygonMode (GL_FRONT_AND_BACK, GL_LINE);
-		GLUquadricObj* qobj = gluNewQuadric();
-		gluSphere(qobj, min, 8, 8);
+
 		qglColor3f( 0.8f, 0.8f, 0.8f );
-		gluSphere(qobj, max, 8, 8);
+		GLSphere(max, 8, 8);
 		qglEnable(GL_BLEND);
 		qglPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		qglBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -3801,14 +3826,13 @@ void DrawSpeaker(brush_t *b, bool bSelected, bool twoD) {
 		} else {
 			qglColor4f( b->owner->eclass->color.x, b->owner->eclass->color.y, b->owner->eclass->color.z, 0.35f );
 		}
-		gluSphere(qobj, min, 8, 8);
+		GLSphere(min, 8, 8);
 		if (bSelected) {
 			qglColor4f( g_qeglobals.d_savedinfo.colors[COLOR_SELBRUSHES].x, g_qeglobals.d_savedinfo.colors[COLOR_SELBRUSHES].y, g_qeglobals.d_savedinfo.colors[COLOR_SELBRUSHES].z, 0.1f );
 		} else {
 			qglColor4f( b->owner->eclass->color.x, b->owner->eclass->color.y, b->owner->eclass->color.z, 0.1f );
 		}
-		gluSphere(qobj, max, 8, 8);
-		gluDeleteQuadric(qobj);
+		GLSphere(max, 8, 8);
 		qglPopMatrix();
 	}
 
@@ -4329,7 +4353,6 @@ void Brush_DrawCombatNode( brush_t *b, bool cameraView, bool bSelected ) {
 	idVec3 cone_left = leftang.ToForward();
 	idAngles rightang( 0.0f, yaw - fov * 0.5f + 90.0f, 0.0f );
 	idVec3 cone_right = rightang.ToForward();
-	bool disabled = b->owner->epairs.GetBool( "start_off" );
 
 	idVec4 color;
 	if ( bSelected ) {
@@ -4583,7 +4606,7 @@ void Brush_DrawCurve( brush_t *b, bool bSelected, bool cam ) {
 	}
 
 	int maxage = b->owner->curve->GetNumValues();
-	int i, time = 0;
+	int i;
 	qglColor3f( 0.0f, 0.0f, 1.0f );
 	for ( i = 0; i < maxage; i++) {
 
